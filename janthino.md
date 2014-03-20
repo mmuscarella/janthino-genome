@@ -59,6 +59,10 @@ Before you assemble and annotate the *Janthino* genome, you first need to assess
     > fastx_clipper -v -a GCTCTTCCGATCT -i [infile] -o ./trimmed/[outfile]
     Remove R2 Adapters
     > fastx_clipper -v -a AGATCGGAAGAGC -i [infile] -o ./trimmed/[outfile]
+
+
+
+./cutadapt -f fastq -O $stringency -q 20 -a AGATCGGAAGAGC input_file.fastq
         
 
 ## Stopping Point 3/20/2014 ##
