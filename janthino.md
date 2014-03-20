@@ -35,6 +35,12 @@ Before you assemble and annotate the *Janthino* genome, you first need to assess
     Did nohub finish?
     > ps -U[username]
 
+    We also need a few folders for out outputs
+    > mkdir ./trimmed
+    > mkdir ./interleaved
+
+    I will explain what each of these are for later.
+
 **B. Unzip compressed files** (for more information about gunzip see: [Linux / Unix Command: gzip](http://linux.about.com/od/commands/l/blcmdl1_gzip.htm))
 
     > cd ../janthino_test
@@ -51,7 +57,7 @@ Before you assemble and annotate the *Janthino* genome, you first need to assess
 
 ### Sequence Pre-Processing ###
 
-** D. Remove Adapters with **
+**D. Remove Adapters with with *FastX-toolkit***
 
     Add the FastX-toolkit to path
     > PATH=$PATH:/N/soft/mason/galaxy-apps/fastx_toolkit_0.0.13
@@ -60,27 +66,41 @@ Before you assemble and annotate the *Janthino* genome, you first need to assess
     Remove R2 Adapters
     > fastx_clipper -v -a AGATCGGAAGAGC -i [infile] -o ./trimmed/[outfile]
 
+**OR Remove Adapters with *cutadapt***
+
+    > module load cutadapt
+    > cutadapt -f fastq -O $stringency -q 20 -a AGATCGGAAGAGC input_file.fastq
+
+Method | Pros | Cons 
+:---------: |:------------: |:------------: 
+*FastX-toolkit*|                     |                     
+*cutadapt* |                           |                  
+
+**E. Interleave Paired End Reads**  
+Paired end sequencing (from HiSeq or MiSeq) yield two files per sample: R1 and R2.
+To assemble the raw reads into larger contigs, aligning software needs paired reads in the same file and in the correct order. 
+The process used to do this is called *interleaving*. There are a few tools out there for interleaving paired end sequences.
+The software package *Velvet* includes a perl script: *sufflesSequences_fastq.pl*.
+The software package *Khmer* includes a python script: *interleave-reads.py*.
+Both should work, but I haven't actually tested this.
+
+***Velvet Method***
+
+    >module load velvet
+    > sufflesSequences_fastq.pl ./trimmed/"sequence_R1" ./trimmed/"sequence_R2" ./interleaved/"output_filename"
+
+***Khmer Methods***
+
+    Add the Khmer to path
+    > PATH=$PATH:/usr/local/share/khmer/scripts/
+    > interleave-reads.py ./trimmed/"sequence_R1" ./trimmed/"sequence_R2" ./interleaved/"output_filename"
+    From Khmer-protocols:
+    > interleave-reads.py s?_pe > combined.fq
+
+**F. Remove Any Low Quality Reads**
+If you look at the FastQC output, you will see that there is quite a bit of variation in the quality (Phred quality scores) for each file. Just as a refresher, let's run *FastQC* again:
 
 
-./cutadapt -f fastq -O $stringency -q 20 -a AGATCGGAAGAGC input_file.fastq
-        
-
-## Stopping Point 3/20/2014 ##
-
-
-E. Interleave Paired End Reads
-
-
-R1 and R2 (paired end sequencing)
-        >module load velvet
-        > sufflesSequences_fastq.pl ./trimmed/"sequence_R1" ./trimmed"sequence_R2" ./interleaved/"output_filename"
-        
-        
-        I'm not sure how to make this more automated yet, so probably just sequence by sequence
-        
-        There is also an interleave command in Khmer
-        
-/usr/local/share/khmer/scripts/interleave-reads.py s?_pe > combined.fq
 Remove Low Quality Reads
 > 
 fastq_quality_filter -Q33 -q 30 -p 50 -i combined.fq > combined-trim.fq
