@@ -136,15 +136,57 @@ If you look at the FastQC output, you will see that there is quite a bit of vari
 
     > fastqc ./quality/janthino.combined-trim.fastq
 
-** G. Remove Orphanned Reads**
+**G. Remove Orphanned Reads**
+
 Orphanned reads are sequences in a pair end project that have for what ever reason, lost the corresponding pair. This actually causes issus when assembling the sequences.
+
+    > PATH=$PATH:/usr/local/share/khmer/scripts/
+    > extract-paired-reads.py combined-trim.fq
         
-        
-***Re-Check Sequence Quality with *FastQC****
+***Re-Check Sequence Quality with *FastQC****  
+Wondering what the data look like now?
 
     > fastqc ./quality/janthino.combined-trim..trim.fastq
 
-**Digital Normalization**
+**Digital Normalization**  
+The largest issue in genome sequencing is coverage.
+We want to make sure that we have good coverage across the entire genome.
+However, data shows that we get unequal coverage and though the median coverage may be 50X some areas will have up to 10 times that.
+To deal with this tools have been developed to normalize the data.
+This benefits the assembly in multiple ways: it equalizes the coverage across the genome, it lowers the error rate, and it greatly reduces the file sizes.
+All of these end up benefiting the assembly process.
+
+**Here, we will use a three step digital normalization process from the *Khmer* package**
+
+    > normalize-by-median.py -k 20 -C 20 -N 4 -x 5e8 -p --savehash normC20k20.kh *.pe.qc.fq.gz
+
+    > filter-abund.py -V normC20k20.kh *.keep
+
+The process of error trimming could have orphaned reads, so split the PE file into still-interleaved and non-interleaved reads:
+
+for i in *.pe.qc.fq.gz.keep.abundfilt
+do
+   /usr/local/share/khmer/scripts/extract-paired-reads.py $i
+done
+
+/usr/local/share/khmer/scripts/normalize-by-median.py -C 5 -k 20 -N 4 -x 5e8 --savehash normC5k20.kh -p *.pe.qc.fq.gz.keep.abundfilt.pe
+
+
+
+
+
+
+
+Read stats
+
+Try running:
+
+/usr/local/share/khmer/sandbox/readstats.py *.kak.qc.fq.gz *.?e.qc.fq.gz
+
+
+
+
+
     
 Here is the point where we need to do some quality filtering. 
         
