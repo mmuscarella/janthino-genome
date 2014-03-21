@@ -38,6 +38,8 @@ Before you assemble and annotate the *Janthino* genome, you first need to assess
     We also need a few folders for out outputs
     > mkdir ./trimmed
     > mkdir ./interleaved
+    > mkdir ./quality
+    > mkdir ./processing
 
     I will explain what each of these are for later.
 
@@ -62,17 +64,18 @@ Before you assemble and annotate the *Janthino* genome, you first need to assess
     Add the FastX-toolkit to path
     > PATH=$PATH:/N/soft/mason/galaxy-apps/fastx_toolkit_0.0.13
     Remove R1 Adapters
-    > fastx_clipper -v -a GCTCTTCCGATCT -i [infile] -o ./trimmed/[outfile]
+    > fastx_clipper -v -a GCTCTTCCGATCT -i ./janthino.R1.fastq -o ./trimmed/janthino.trim.R1.fastq
     Remove R2 Adapters
-    > fastx_clipper -v -a AGATCGGAAGAGC -i [infile] -o ./trimmed/[outfile]
+    > fastx_clipper -v -a AGATCGGAAGAGC -i ./janthino.R2.fastq -o ./trimmed/janthino.trim.R2.fastq
 
 **OR Remove Adapters with *cutadapt***
 
     > module load cutadapt
-    > cutadapt -f fastq -O $stringency -q 20 -a AGATCGGAAGAGC input_file.fastq
+    > cutadapt -a GCTCTTCCGATCT ./janthino.trim.R1.fastq -o ./trimmed/janthiono.trim.R1.fastq
+    > cutadapt -a AGATCGGAAGAGC ./janthino.trim.R2.fastq -o ./trimmed/janthino.trim.R2.fastq
 
 Method | Pros | Cons 
-:---------: |:------------: |:------------: 
+:--------: |:-----: |:------: 
 *FastX-toolkit*|                     |                     
 *cutadapt* |                           |                  
 
@@ -98,12 +101,19 @@ Both should work, but I haven't actually tested this.
     > interleave-reads.py s?_pe > combined.fq
 
 **F. Remove Any Low Quality Reads**
+
 If you look at the FastQC output, you will see that there is quite a bit of variation in the quality (Phred quality scores) for each file. Just as a refresher, let's run *FastQC* again:
 
+    > fastqc ./interleaved/*.fastq >> results.out
 
-Remove Low Quality Reads
-> 
-fastq_quality_filter -Q33 -q 30 -p 50 -i combined.fq > combined-trim.fq
+***Remove Low Quality Reads***
+
+    > fastq_quality_filter -Q33 -q 30 -p 50 -i ./interleaved/janthino.combined.fastq > ./quality/janthino.combined-trim.fastq
+
+***Check Quality Again
+
+    > fastqc ./quality/janthino.combined-trim.fastq
+
 Remove Orphanned Reads
         
         
