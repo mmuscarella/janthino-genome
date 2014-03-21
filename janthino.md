@@ -158,18 +158,23 @@ All of these end up benefiting the assembly process.
 
 **Here, we will use a three step digital normalization process from the *Khmer* package**
 
+Normalize everything to a coverage of 20; keep pairs using ‘-p’:
+
     > normalize-by-median.py -k 20 -C 20 -N 4 -x 5e8 -p --savehash normC20k20.kh *.pe.qc.fq.gz
+
+This produces a set of ‘.keep’ files, as well as a normC20k20.kh database file.  
+Use ‘filter-abund’ to trim off any k-mers that are abundance-1 in high-coverage reads. The -V option is used to make this work better for variable coverage data sets:
 
     > filter-abund.py -V normC20k20.kh *.keep
 
 The process of error trimming could have orphaned reads, so split the PE file into still-interleaved and non-interleaved reads:
 
-for i in *.pe.qc.fq.gz.keep.abundfilt
-do
-   /usr/local/share/khmer/scripts/extract-paired-reads.py $i
-done
+    > for i in *.pe.qc.fq.gz.keep.abundfilt  
+    > do  
+    > extract-paired-reads.py $i  
+    > done  
 
-/usr/local/share/khmer/scripts/normalize-by-median.py -C 5 -k 20 -N 4 -x 5e8 --savehash normC5k20.kh -p *.pe.qc.fq.gz.keep.abundfilt.pe
+    > /usr/local/share/khmer/scripts/normalize-by-median.py -C 5 -k 20 -N 4 -x 5e8 --savehash normC5k20.kh -p *.pe.qc.fq.gz.keep.abundfilt.pe
 
 
 
@@ -181,12 +186,12 @@ Read stats
 
 Try running:
 
-/usr/local/share/khmer/sandbox/readstats.py *.kak.qc.fq.gz *.?e.qc.fq.gz
+    > readstats.py *.kak.qc.fq.gz *.?e.qc.fq.gz
 
 
 
 
-
+### Sequence Assembly ###
     
 Here is the point where we need to do some quality filtering. 
         
@@ -199,6 +204,9 @@ Here is the point where we need to do some quality filtering.
     Velveth reads in these sequence files and simply produces a hashtable  and two output files (Roadmaps and Sequences) which are necessary for  the subsequent program, velvetg. 
     > velvetg auto_33 -exp_cov auto
     
+
+
+###Add Khmer Env###
 Digital Normalizatoin
 source khmerEnv/bin/activate
 qsub -I -q shared -l nodes=1:ppn=4,vmem=10gb,walltime=4:00:00
@@ -208,4 +216,3 @@ strip-and-split-for-assembly.py ecoli_ref.fq.gz.keep.abundfilt.keep
     velveth ecoli.kak.$i $i -fasta -short ecoli*.se -shortPaired ecoli*.pe;
     velvetg ecoli.kak.$i -exp_cov auto -cov_cutoff auto -scaffolding no;
   done
-PATH=$PATH:/N/soft/mason/galaxy-apps/fastx_toolkit_0.0.13
