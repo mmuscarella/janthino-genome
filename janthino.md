@@ -12,11 +12,13 @@ Log-on to Mason from unix terminal
 Log-on to Mason from Putty (using cmd or PowerShell)
 
     > putty -ssh [username]@mason.indiana.edu
-    OR (if you've saved settings for Mason)
+
+*OR (if you've saved settings for Mason)*
+
     > putty -load mason
 
 Some of the following may take >20 minutes. 
-Mason automatically kills memory/time intensive jobs that are submitted interactively.
+Mason automatically kills memory/time intensive jobs.
 However, you can start an interactive session using the following:
 
     > qsub -I -q shared -l nodes=1:ppn=4,vmem=10gb,walltime=4:00:00
@@ -35,20 +37,24 @@ Before you assemble and annotate the *Janthino* genome, you first need to assess
     > cd /N/dc2/projects/Lennon_Sequences/Janthino_Genome  
     > mkdir ../janthino_test
     > cp ./*.fastq.gz ../janthino_test
+    > cd ../janthino_test
     
-    Run as a background process (recommended)
+Run as a background process (recommended)
+
     > nohup cp ./*.fastq.gz ../janthino_test &
 
-    Did a nohub process finish?
+Did a nohub process finish?
+
     > ps -U[username]
 
-    We also need a few folders for out outputs
+We also need a few folders for out outputs
+
     > mkdir ./trimmed
     > mkdir ./interleaved
     > mkdir ./quality
     > mkdir ./processing
 
-    I will explain what each of these are for later.
+I will explain what each of these are for later.
 
 **B. Unzip compressed files** (for more information about gunzip see: [Linux / Unix Command: gzip](http://linux.about.com/od/commands/l/blcmdl1_gzip.htm))
 
@@ -68,11 +74,16 @@ Before you assemble and annotate the *Janthino* genome, you first need to assess
 
 **D. Remove Adapters with with *FastX-toolkit***
 
-    Add the FastX-toolkit to path
+Add the FastX-toolkit to path
+
     > PATH=$PATH:/N/soft/mason/galaxy-apps/fastx_toolkit_0.0.13
-    Remove R1 Adapters
+
+Remove R1 Adapters
+
     > fastx_clipper -v -a GCTCTTCCGATCT -i ./janthino.R1.fastq -o ./trimmed/janthino.trim.R1.fastq
-    Remove R2 Adapters
+
+Remove R2 Adapters
+
     > fastx_clipper -v -a AGATCGGAAGAGC -i ./janthino.R2.fastq -o ./trimmed/janthino.trim.R2.fastq
 
 **OR Remove Adapters with *cutadapt***
@@ -102,10 +113,13 @@ Both should work, but I haven't actually tested this.
 
 ***Khmer Methods***
 
-    Add the Khmer to path
+Add the Khmer to path
+
     > PATH=$PATH:/usr/local/share/khmer/scripts/
     > interleave-reads.py ./trimmed/"sequence_R1" ./trimmed/"sequence_R2" ./interleaved/"output_filename"
-    From Khmer-protocols:
+
+From Khmer-protocols:
+
     > interleave-reads.py s?_pe > combined.fq
 
 **F. Remove Any Low Quality Reads**
@@ -123,11 +137,16 @@ If you look at the FastQC output, you will see that there is quite a bit of vari
     > fastqc ./quality/janthino.combined-trim.fastq
 
 ** G. Remove Orphanned Reads**
+Orphanned reads are sequences in a pair end project that have for what ever reason, lost the corresponding pair. This actually causes issus when assembling the sequences.
         
         
-    7. Re-Check Sequence Quality with fastqc (Mason Cluster)
+***Re-Check Sequence Quality with *FastQC****
+
+    > fastqc ./quality/janthino.combined-trim..trim.fastq
+
+**Digital Normalization**
     
-    8. Here is the point where we need to do some quality filtering. 
+Here is the point where we need to do some quality filtering. 
         
     7. Use Velvet to Assemble sequences
     Mason automatically kills memory intensive jobs that aren't submitted via qsub
