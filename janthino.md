@@ -15,6 +15,13 @@ Log-on to Mason from Putty (using cmd or PowerShell)
     OR (if you've saved settings for Mason)
     > putty -load mason
 
+Some of the following may take >20 minutes. 
+Mason automatically kills memory/time intensive jobs that are submitted interactively.
+However, you can start an interactive session using the following:
+
+    > qsub -I -q shared -l nodes=1:ppn=4,vmem=10gb,walltime=4:00:00
+
+***Time to get the data and start some fun***  
 The original sequence files (fastq.gz) can be found at:
 
     /N/dc2/projects/Lennon_Sequences/Janthino_Genome
@@ -32,7 +39,7 @@ Before you assemble and annotate the *Janthino* genome, you first need to assess
     Run as a background process (recommended)
     > nohup cp ./*.fastq.gz ../janthino_test &
 
-    Did nohub finish?
+    Did a nohub process finish?
     > ps -U[username]
 
     We also need a few folders for out outputs
@@ -82,7 +89,8 @@ Method | Pros | Cons
 **E. Interleave Paired End Reads**  
 Paired end sequencing (from HiSeq or MiSeq) yield two files per sample: R1 and R2.
 To assemble the raw reads into larger contigs, aligning software needs paired reads in the same file and in the correct order. 
-The process used to do this is called *interleaving*. There are a few tools out there for interleaving paired end sequences.
+The process used to do this is called *interleaving*. 
+There are a few tools out there for interleaving paired end sequences.
 The software package *Velvet* includes a perl script: *sufflesSequences_fastq.pl*.
 The software package *Khmer* includes a python script: *interleave-reads.py*.
 Both should work, but I haven't actually tested this.
@@ -110,11 +118,11 @@ If you look at the FastQC output, you will see that there is quite a bit of vari
 
     > fastq_quality_filter -Q33 -q 30 -p 50 -i ./interleaved/janthino.combined.fastq > ./quality/janthino.combined-trim.fastq
 
-***Check Quality Again
+***Check Quality Again***
 
     > fastqc ./quality/janthino.combined-trim.fastq
 
-Remove Orphanned Reads
+** G. Remove Orphanned Reads**
         
         
     7. Re-Check Sequence Quality with fastqc (Mason Cluster)
