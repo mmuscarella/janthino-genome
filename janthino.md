@@ -136,15 +136,62 @@ If you look at the FastQC output, you will see that there is quite a bit of vari
 
     > fastqc ./quality/janthino.combined-trim.fastq
 
-** G. Remove Orphanned Reads**
+**G. Remove Orphanned Reads**
+
 Orphanned reads are sequences in a pair end project that have for what ever reason, lost the corresponding pair. This actually causes issus when assembling the sequences.
+
+    > PATH=$PATH:/usr/local/share/khmer/scripts/
+    > extract-paired-reads.py combined-trim.fq
         
-        
-***Re-Check Sequence Quality with *FastQC****
+***Re-Check Sequence Quality with *FastQC****  
+Wondering what the data look like now?
 
     > fastqc ./quality/janthino.combined-trim..trim.fastq
 
-**Digital Normalization**
+**Digital Normalization**  
+The largest issue in genome sequencing is coverage.
+We want to make sure that we have good coverage across the entire genome.
+However, data shows that we get unequal coverage and though the median coverage may be 50X some areas will have up to 10 times that.
+To deal with this tools have been developed to normalize the data.
+This benefits the assembly in multiple ways: it equalizes the coverage across the genome, it lowers the error rate, and it greatly reduces the file sizes.
+All of these end up benefiting the assembly process.
+
+**Here, we will use a three step digital normalization process from the *Khmer* package**
+
+Normalize everything to a coverage of 20; keep pairs using ‘-p’:
+
+    > normalize-by-median.py -k 20 -C 20 -N 4 -x 5e8 -p --savehash normC20k20.kh *.pe.qc.fq.gz
+
+This produces a set of ‘.keep’ files, as well as a normC20k20.kh database file.  
+Use ‘filter-abund’ to trim off any k-mers that are abundance-1 in high-coverage reads. The -V option is used to make this work better for variable coverage data sets:
+
+    > filter-abund.py -V normC20k20.kh *.keep
+
+The process of error trimming could have orphaned reads, so split the PE file into still-interleaved and non-interleaved reads:
+
+    > for i in *.pe.qc.fq.gz.keep.abundfilt  
+    > do  
+    > extract-paired-reads.py $i  
+    > done  
+
+    > /usr/local/share/khmer/scripts/normalize-by-median.py -C 5 -k 20 -N 4 -x 5e8 --savehash normC5k20.kh -p *.pe.qc.fq.gz.keep.abundfilt.pe
+
+
+
+
+
+
+
+Read stats
+
+Try running:
+
+    > readstats.py *.kak.qc.fq.gz *.?e.qc.fq.gz
+
+
+
+
+### Sequence Assembly ###
     
 Here is the point where we need to do some quality filtering. 
         
@@ -157,6 +204,9 @@ Here is the point where we need to do some quality filtering.
     Velveth reads in these sequence files and simply produces a hashtable  and two output files (Roadmaps and Sequences) which are necessary for  the subsequent program, velvetg. 
     > velvetg auto_33 -exp_cov auto
     
+
+
+###Add Khmer Env###
 Digital Normalizatoin
 source khmerEnv/bin/activate
 qsub -I -q shared -l nodes=1:ppn=4,vmem=10gb,walltime=4:00:00
@@ -166,4 +216,3 @@ strip-and-split-for-assembly.py ecoli_ref.fq.gz.keep.abundfilt.keep
     velveth ecoli.kak.$i $i -fasta -short ecoli*.se -shortPaired ecoli*.pe;
     velvetg ecoli.kak.$i -exp_cov auto -cov_cutoff auto -scaffolding no;
   done
-PATH=$PATH:/N/soft/mason/galaxy-apps/fastx_toolkit_0.0.13
