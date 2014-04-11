@@ -23,6 +23,8 @@ However, you can start an interactive session using the following:
 
     > qsub -I -q shared -l nodes=1:ppn=4,vmem=10gb,walltime=4:00:00
 
+Or just write the entire work flow as a script and submit with torque
+
 ***Time to get the data and start some fun***  
 The original sequence files (fastq.gz) can be found at:
 
@@ -49,15 +51,6 @@ Did a nohub process finish?
     > ps -U[username]
     OR
     > top -U[username]
-
-We also need a few folders for out outputs
-
-    > mkdir ./trimmed
-    > mkdir ./interleaved
-    > mkdir ./quality
-    > mkdir ./processing
-
-I will explain what each of these are for later.
 
 **B. Unzip compressed files** (for more information about gunzip see: [Linux / Unix Command: gzip](http://linux.about.com/od/commands/l/blcmdl1_gzip.htm))
 
@@ -92,34 +85,8 @@ What you will notice is that there are both warnings and failures for both files
 
 ### Sequence Pre-Processing ###
 
-**D. Remove Adapters with with *FastX-toolkit* (This is my preferred method)**
 
-Add the FastX-toolkit to path
-
-    > PATH=$PATH:/N/soft/mason/galaxy-apps/fastx_toolkit_0.0.13
-
-Remove R1 Adapters
-
-    > fastx_clipper -v -Q33 -a GCTCTTCCGATCT -i ./711_ATTCCT_L007_R1_001.fastq -o ./trimmed/janthino.trim.R1.fastq
-
-Remove R2 Adapters
-
-    > fastx_clipper -v -Q33 -a AGATCGGAAGAGC -i ./711_ATTCCT_L007_R2_001.fastq -o ./trimmed/janthino.trim.R2.fastq
-
-**OR Remove Adapters with *cutadapt***
-
-    > module load cutadapt
-    > cutadapt -a GCTCTTCCGATCT ./711_ATTCCT_L007_R1_001.fastq -o ./trimmed/janthiono.trim2.R1.fastq
-    > cutadapt -a AGATCGGAAGAGC ./711_ATTCCT_L007_R2_001.fastq -o ./trimmed/janthino.trim2.R2.fastq
-
-Method | Pros | Cons 
-:--------: |:-----: |:------: 
-*FastX-toolkit*|Removes adapters & low quality/short seqs|Takes a while
-*cutadapt* |Removes adapters and adapters with minor errors|Takes a longer time
-
-I seem to prefer FastX_clipper
-
-**E. Interleave Paired End Reads**  
+**D. Interleave Paired End Reads**  
 Paired end sequencing (from HiSeq or MiSeq) yield two files per sample: R1 and R2.
 To assemble the raw reads into larger contigs, aligning software needs paired reads in the same file and in the correct order. 
 The process used to do this is called *interleaving*. 
@@ -131,49 +98,49 @@ Both should work, but I haven't actually tested this.
 ***Velvet Method***
 
     > module load velvet
-    > shuffleSequences_fastq.pl ./trimmed/janthino.trim.R1.fastq ./trimmed/janthino.trim.R2.fastq ./interleaved/janthino.interleaved.fastq
+    > shuffleSequences_fastq.pl  ./711_ATTCCT_L007_R1_001.fastq ./711_ATTCCT_L007_R2_001.fastq ./janthino.interleaved.fastq
 
-The Khmer tools do not recognize these as paired reads due to changes to files names. Use the Khmer script for interleaving.
+The Khmer tools do not recognize these as paired reads due to changes to files names (still exploring). Use the Khmer script for interleaving.
 
 ***Khmer Methods***
 
 Start the Khmer env (must have this downloaded prior. See: [Directions](https://khmer.readthedocs.org/en/latest/install.html)) 
 
     > source ~/khmerEnv/bin/activate
-    > interleave-reads.py ./trimmed/janthino.trim.R1.fastq ./trimmed/janthino.trim.R2.fastq -o ./interleaved/janthino.interleaved.fastq
+    > interleave-reads.py ./711_ATTCCT_L007_R1_001.fastq ./711_ATTCCT_L007_R2_001.fastq -o ./janthino.interleaved.fastq
 
 *The Khmer method takes a long time - go get a beer!!!!*
 
-**F. Remove Any Low Quality Reads**
+**E. Remove Any Low Quality Reads**
 
 If you look at the FastQC output, you will see that there is quite a bit of variation in the quality (Phred quality scores) for each file. Just as a refresher, let's run *FastQC* again:
 
-    > fastqc ./interleaved/*.fastq >> results.out
-    > less ./interleaved/janthino.interleaved_fastqc/summary.txt
+    > fastqc ./janthino.interleaved.fastq >> results.out
+    > less ./janthino.interleaved_fastqc/summary.txt
 
 ***Remove Low Quality Reads***
 
     > PATH=$PATH:/N/soft/mason/galaxy-apps/fastx_toolkit_0.0.13
-    > fastq_quality_filter -Q33 -q 30 -p 50 -i ./interleaved/janthino.interleaved.fastq > ./quality/janthino.interleaved-trim.fastq
+    > fastq_quality_filter -Q33 -q 30 -p 50 -i ./janthino.interleaved.fastq > ./janthino.interleaved-trim.fastq
 
 ***Check Quality Again***
 
-    > fastqc ./quality/janthino.interleaved-trim.fastq >> results.out
-    > less ./quality/janthino.interleaved-trim_fastqc/summary.txt
+    > fastqc ./janthino.interleaved-trim.fastq >> results.out
+    > less ./janthino.interleaved-trim_fastqc/summary.txt
 
-**G. Remove Orphaned Reads**
+**F. Remove Orphaned Reads**
 
 Orphaned reads are sequences in a pair end project that have for what ever reason, lost the corresponding pair. This actually causes issues when assembling the sequences.
 
     > PATH=$PATH:/usr/local/share/khmer/scripts/
-    > extract-paired-reads.py ./quality/janthino.interleaved-trim.fastq > ./processing/*
+    > extract-paired-reads.py ./janthino.interleaved-trim.fastq
         
 ***Re-Check Sequence Quality with *FastQC****  
 Wondering what the data look like now?
 
-    > fastqc ./processing/janthino.interleaved-trim.fastq.?e
+    > fastqc ./janthino.interleaved-trim.fastq.?e
 
-**Digital Normalization**  
+**G. Digital Normalization**  
 The largest issue in genome sequencing is coverage.
 We want to make sure that we have good coverage across the entire genome.
 However, data shows that we get unequal coverage and though the median coverage may be 50X some areas will have up to 10 times that.
@@ -187,18 +154,18 @@ All of these end up benefiting the assembly process.
 
 The following code will normalize everything to a coverage of 20; keep pairs using ‘-p’:
 
-    > normalize-by-median.py -k 20 -C 20 -N 4 -x 2e9 -p --savehash normC20k20.kh ./processing/janthino.interleaved-trim.fastq.pe
+    > normalize-by-median.py -k 20 -C 20 -N 4 -x 2e9 -p --savehash normC20k20.kh ./janthino.interleaved-trim.fastq.pe
 
 This produces a set of ‘.keep’ files, as well as a normC20k20.kh database file. 
 
 **The following are steps that the Khmer protocol recommends but I find unhelpful (produce worse assemblies)**
 Use ‘filter-abund’ to trim off any k-mers that are abundance-1 in high-coverage reads. The -V option is used to make this work better for variable coverage data sets:
 
-    > filter-abund.py -V normC20k20.kh ./processing/*.keep
+    > filter-abund.py -V normC20k20.kh ./*.keep
 
 Finally, do the second round of normalization to C=5
 
-    > normalize-by-median.py -k 20 -C 5 -N 4 -x 2e9 -p  ./processing/*.keep.abundfilt
+    > normalize-by-median.py -k 20 -C 5 -N 4 -x 2e9 -p  ./*.keep.abundfilt
 
 **If you find those steps useful, feel free to use.**
 **However, you will need to adjust the following code a bit.**
@@ -206,9 +173,9 @@ Finally, do the second round of normalization to C=5
 
 The process of error trimming could have orphaned reads, so split the PE file into still-interleaved and non-interleaved reads:
 
-    > extract-paired-reads.py ./processing/*keep > ./
+    > extract-paired-reads.py ./janthino.interleaved-trim.fastq.pe.keep
 
-### Genome Assembly: Using Velvet Optimization ###
+**H. Genome Assembly: Using Velvet Optimization**
 
     > module load bioperl
     > module load velvet
@@ -270,3 +237,32 @@ strip-and-split-for-assembly.py ecoli_ref.fq.gz.keep.abundfilt.keep
 ###A: Using prodigal ###
 
 ###B: Using RAST ###
+
+
+
+**D. Remove Adapters with with *FastX-toolkit* (This is my preferred method)**
+
+Add the FastX-toolkit to path
+
+    > PATH=$PATH:/N/soft/mason/galaxy-apps/fastx_toolkit_0.0.13
+
+Remove R1 Adapters
+
+    > fastx_clipper -v -Q33 -a GCTCTTCCGATCT -i ./711_ATTCCT_L007_R1_001.fastq -o ./trimmed/janthino.trim.R1.fastq
+
+Remove R2 Adapters
+
+    > fastx_clipper -v -Q33 -a AGATCGGAAGAGC -i ./711_ATTCCT_L007_R2_001.fastq -o ./trimmed/janthino.trim.R2.fastq
+
+**OR Remove Adapters with *cutadapt***
+
+    > module load cutadapt
+    > cutadapt -a GCTCTTCCGATCT ./711_ATTCCT_L007_R1_001.fastq -o ./trimmed/janthiono.trim2.R1.fastq
+    > cutadapt -a AGATCGGAAGAGC ./711_ATTCCT_L007_R2_001.fastq -o ./trimmed/janthino.trim2.R2.fastq
+
+Method | Pros | Cons 
+:--------: |:-----: |:------: 
+*FastX-toolkit*|Removes adapters & low quality/short seqs|Takes a while
+*cutadapt* |Removes adapters and adapters with minor errors|Takes a longer time
+
+I seem to prefer FastX_clipper
