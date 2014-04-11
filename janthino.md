@@ -140,7 +140,7 @@ The Khmer tools do not recognize these as paired reads due to changes to files n
 Start the Khmer env (must have this downloaded prior. See: [Directions](https://khmer.readthedocs.org/en/latest/install.html)) 
 
     > source ~/khmerEnv/bin/activate
-    > interleave-reads.py ./trimmed/janthino.trim.R1.fastq ./trimmed/janthino.trim.R2.fastq ./interleaved/janthino.interleaved.fastq
+    > interleave-reads.py ./trimmed/janthino.trim.R1.fastq ./trimmed/janthino.trim.R2.fastq -o ./interleaved/janthino.interleaved.fastq
 
 *The Khmer method takes a long time - go get a beer!!!!*
 
@@ -166,7 +166,7 @@ If you look at the FastQC output, you will see that there is quite a bit of vari
 Orphaned reads are sequences in a pair end project that have for what ever reason, lost the corresponding pair. This actually causes issues when assembling the sequences.
 
     > PATH=$PATH:/usr/local/share/khmer/scripts/
-    > extract-paired-reads.py ./quality/janthino.interleaved-trim.fastq > ./processing/
+    > extract-paired-reads.py ./quality/janthino.interleaved-trim.fastq > ./processing/*
         
 ***Re-Check Sequence Quality with *FastQC****  
 Wondering what the data look like now?
