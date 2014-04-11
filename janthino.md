@@ -238,7 +238,7 @@ strip-and-split-for-assembly.py ecoli_ref.fq.gz.keep.abundfilt.keep
 
 ###B: Using RAST ###
 
-
+# OLD CODE #
 
 **D. Remove Adapters with with *FastX-toolkit* (This is my preferred method)**
 
