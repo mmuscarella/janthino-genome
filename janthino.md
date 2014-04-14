@@ -85,7 +85,6 @@ What you will notice is that there are both warnings and failures for both files
 
 ### Sequence Pre-Processing ###
 
-
 **D. Interleave Paired End Reads**  
 Paired end sequencing (from HiSeq or MiSeq) yield two files per sample: R1 and R2.
 To assemble the raw reads into larger contigs, aligning software needs paired reads in the same file and in the correct order. 
@@ -152,13 +151,16 @@ All of these end up benefiting the assembly process.
 **This method was developed by Titus Brown and Colleagues.**
 **They recommend using a three step normalization method, but I've found that the best results are achieved by using only the first step.**
 
+***Normalization***  
+
 The following code will normalize everything to a coverage of 20; keep pairs using ‘-p’:
 
     > normalize-by-median.py -k 20 -C 20 -N 4 -x 2e9 -p --savehash normC20k20.kh ./janthino.interleaved-trim.fastq.pe
 
 This produces a set of ‘.keep’ files, as well as a normC20k20.kh database file. 
 
-**The following are steps that the Khmer protocol recommends but I find unhelpful (produce worse assemblies)**
+**The following are steps that the Khmer protocol recommends but I find unhelpful (produce worse assemblies):**  
+
 Use ‘filter-abund’ to trim off any k-mers that are abundance-1 in high-coverage reads. The -V option is used to make this work better for variable coverage data sets:
 
     > filter-abund.py -V normC20k20.kh ./*.keep
@@ -170,6 +172,8 @@ Finally, do the second round of normalization to C=5
 **If you find those steps useful, feel free to use.**
 **However, you will need to adjust the following code a bit.**
 **Otherwise, continue as directed.**
+
+***Check for orphaned reads***  
 
 The process of error trimming could have orphaned reads, so split the PE file into still-interleaved and non-interleaved reads:
 
@@ -188,7 +192,7 @@ It will go through all hash values from 31 to 61.
 On my trials, it will choose 57 for the final assembly. 
 This might take a while, but at the end you should get less than 100 contigs. 
 
-
+Results that I've gotten:
 Velvet hash value: 57
 Roadmap file size: 113711413
 Total number of contigs: 51
@@ -201,35 +205,36 @@ Paired Library insert stats:
 Paired-end library 1 has length: 247, sample standard deviation: 85
 Paired-end library 1 has length: 247, sample standard deviation: 86
 
-Old code: 
-VelvetOptimiser.pl -s 19 -e 51 -f '-shortPaired -fastq ./janthino.interleaved-trim.fastq.pe.keep.abundfilt.keep.pe' -t 4 -k 'n50'
+
+## Assembly work flow as a torque script: ##
+
+    > #!/bin/bash
+    > #PBS -k o
+    > #PBS -l nodes=1:ppn=8,vmem=50gb,walltime=10:00:00
+    > #PBS -M mmuscare@indiana.edu
+    > #PBS -m abe
+    > #PBS -j oe
+    > source ~/khmerEnv/bin/activate
+    > module load java
+    > module load fastqc
+    > module load bioperl
+    > module load velvet
+    > module load VelvetOptimiser
+    > PATH=$PATH:/N/soft/mason/galaxy-apps/fastx_toolkit_0.0.13
+    > PATH=$PATH:/usr/local/share/khmer/scripts/
+    > cd /N/dc2/projects/Lennon_Sequences/Janthino_Test
+    > interleave-reads.py ./711_ATTCCT_L007_R1_001.fastq ./711_ATTCCT_L007_R2_001.fastq -o ./janthino.interleaved.fastq
+    > fastq_quality_filter -Q 33 -q 30 -p 50 -i ./janthino.interleaved.fastq > ./janthino.interleaved-trim.fastq
+    > extract-paired-reads.py ./janthino.interleaved-trim.fastq
+    > normalize-by-median.py -k 20 -C 20 -N 4 -x 2e9 -p --savehash normC20k20.kh ./janthino.interleaved-trim.fastq.pe
+    > extract-paired-reads.py ./janthino.interleaved-trim.fastq.pe.keep
+    > VelvetOptimiser.pl -s 31 -e 61 -f '-shortPaired -fastq ./janthino.interleaved-trim.fastq.pe.keep.pe' -t 4 -k 'n50'
+    > deactivate
 
 
-### Sequence Assembly ###
-    
-Here is the point where we need to do some quality filtering. 
-        
-    7. Use Velvet to Assemble sequences
-    Mason automatically kills memory intensive jobs that aren't submitted via qsub
-    However; you can start an interactive session using the following
-    > qsub -I -q shared -l nodes=1:ppn=4,vmem=10gb,walltime=4:00:00
-    Otherwise, use a qsub script
-    > velveth auto 31,45,2 -fastq -shortPaired1 "interleaved_input_file"
-    Velveth reads in these sequence files and simply produces a hashtable  and two output files (Roadmaps and Sequences) which are necessary for  the subsequent program, velvetg. 
-    > velvetg auto_33 -exp_cov auto
-    
 
 
-###Add Khmer Env###
-Digital Normalizatoin
-source khmerEnv/bin/activate
-qsub -I -q shared -l nodes=1:ppn=4,vmem=10gb,walltime=4:00:00
-normalize-by-median.py -x 2e9 -k 21 711_interleaved.fastq
-strip-and-split-for-assembly.py ecoli_ref.fq.gz.keep.abundfilt.keep
-% for i in {19..51..2}; do
-    velveth ecoli.kak.$i $i -fasta -short ecoli*.se -shortPaired ecoli*.pe;
-    velvetg ecoli.kak.$i -exp_cov auto -cov_cutoff auto -scaffolding no;
-  done
+
 
 
 ## Gene Predication ##
@@ -238,9 +243,14 @@ strip-and-split-for-assembly.py ecoli_ref.fq.gz.keep.abundfilt.keep
 
 ###B: Using RAST ###
 
-# OLD CODE #
 
-**D. Remove Adapters with with *FastX-toolkit* (This is my preferred method)**
+
+
+---
+
+## Other code that may be of interest: ##
+
+**Remove Adapters with with *FastX-toolkit* (This is my preferred method)**
 
 Add the FastX-toolkit to path
 
@@ -248,13 +258,13 @@ Add the FastX-toolkit to path
 
 Remove R1 Adapters
 
-    > fastx_clipper -v -Q33 -a GCTCTTCCGATCT -i ./711_ATTCCT_L007_R1_001.fastq -o ./trimmed/janthino.trim.R1.fastq
+    > fastx_clipper -v -Q 33 -a GCTCTTCCGATCT -i ./711_ATTCCT_L007_R1_001.fastq -o ./trimmed/janthino.trim.R1.fastq
 
 Remove R2 Adapters
 
-    > fastx_clipper -v -Q33 -a AGATCGGAAGAGC -i ./711_ATTCCT_L007_R2_001.fastq -o ./trimmed/janthino.trim.R2.fastq
+    > fastx_clipper -v -Q 33 -a AGATCGGAAGAGC -i ./711_ATTCCT_L007_R2_001.fastq -o ./janthino.trim.R2.fastq
 
-**OR Remove Adapters with *cutadapt***
+**Remove Adapters with *cutadapt***
 
     > module load cutadapt
     > cutadapt -a GCTCTTCCGATCT ./711_ATTCCT_L007_R1_001.fastq -o ./trimmed/janthiono.trim2.R1.fastq
@@ -265,4 +275,3 @@ Method | Pros | Cons
 *FastX-toolkit*|Removes adapters & low quality/short seqs|Takes a while
 *cutadapt* |Removes adapters and adapters with minor errors|Takes a longer time
 
-I seem to prefer FastX_clipper
